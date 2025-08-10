@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pivníček 🍻</title>
+  <meta name="description" content="Jednoduchá účtenka na piva – přidávej lidi, malý/velký piva a měj přehled, kdo kolik dluží.">
+  <style>
+    :root{
+      --bg: #0f1220; --panel:#151a2c; --muted:#8b95b7; --text:#e8ecff;
+      --accent:#7aa2ff; --good:#34d399; --bad:#ef4444; --ring: rgba(122,162,255,.35);
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f6f7fb; --panel:#ffffff; --muted:#6b7280; --text:#0f1220;
+        --accent:#3b82f6; --good:#10b981; --bad:#ef4444; --ring: rgba(59,130,246,.25);
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      background:linear-gradient(180deg, var(--bg), #0b0e1a 60%);
+      color:var(--text);
+    }
+    .wrap{max-width:960px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+    .title{display:flex;gap:10px;align-items:center}
+    .title h1{margin:0;font-size:22px}
+    .card{background:var(--panel);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.06); box-shadow: 0 8px 24px rgba(0,0,0,.25)}
+    .grid{display:grid;gap:12px}
+    @media(min-width:800px){ .grid-cols-2{grid-template-columns: 1fr 1fr} }
+    label{font-size:12px;color:var(--muted)}
+    input[type="text"], input[type="password"], input[type="number"]{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);
+      background:transparent;color:var(--text);outline:none;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0; }
+    input:focus{box-shadow:0 0 0 4px var(--ring); border-color: var(--accent)}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .btn{
+      appearance:none;border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text);
+      padding:8px 12px;border-radius:10px;cursor:pointer
+    }
+    .btn:hover{border-color:var(--accent)}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:white}
+    .btn.ghost{border-color:rgba(255,255,255,.08)}
+    .btn.bad{border-color:rgba(239,68,68,.35); color:#fff; background: linear-gradient(180deg, #ef4444, #dc2626)}
+    .btn.small{padding:6px 9px;font-size:13px}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{padding:10px 12px;text-align:left}
+    th{font-size:12px;color:var(--muted);font-weight:600}
+    tr{background:var(--panel);border-radius:12px}
+    tr td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
+    tr td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);padding:6px 8px;border-radius:999px}
+    .counter{display:inline-flex;align-items:center;gap:6px}
+    .muted{color:var(--muted)}
+    .totals{display:flex;gap:16px;flex-wrap:wrap}
+    .kpi{flex:1; min-width:180px;background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px}
+    .kpi h3{margin:0 0 6px 0;font-size:12px;color:var(--muted)}
+    .kpi div{font-size:22px;font-weight:700}
+    .spacer{height:8px}
+    .name{font-weight:600}
+    .money{font-variant-numeric: tabular-nums}
+    .footer{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .danger{color:#fff;background:linear-gradient(180deg,#ef4444,#b91c1c);border:none}
+
+    /* Login overlay */
+    .login{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      background: radial-gradient(1200px 800px at 50% 20%, rgba(122,162,255,.15), transparent 60%), linear-gradient(180deg, var(--bg), #0b0e1a 70%);
+      padding:24px; z-index:999;
+    }
+    .login .panel{width:100%; max-width:420px; background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:18px}
+    .login h2{margin:0 0 6px 0; font-size:20px}
+    .login .err{color:#fff; background:linear-gradient(180deg,#ef4444,#b91c1c); border-radius:10px; padding:8px 10px; display:none; font-size:13px}
+    .right{margin-left:auto}
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="login" class="login">
+    <div class="panel">
+      <h2>Vstup na Pivníček</h2>
+      <div class="muted" style="margin-bottom:10px">Zadej přihlašovací údaje</div>
+      <form id="loginForm" class="grid" style="gap:10px">
+        <div>
+          <label for="loginUser">Uživatel</label>
+          <input id="loginUser" type="text" placeholder="tri" autocomplete="username" required />
+        </div>
+        <div>
+          <label for="loginPass">Heslo</label>
+          <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <div class="muted" style="font-size:12px">Tip: Enter odesílá</div>
+          <button class="btn primary" type="submit">Přihlásit</button>
+        </div>
+        <div id="loginErr" class="err">Špatné jméno nebo heslo.</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div class="wrap" id="app" style="display:none">
+    <header>
+      <div class="title">
+        <span style="font-size:22px">🍻</span>
+        <h1>Pivníček</h1>
+      </div>
+      <div class="row">
+        <div class="pill">
+          <span class="muted">Malý (0,3l):</span>
+          <input id="priceSmall" type="number" min="0" step="1" style="width:90px" />
+          <span class="muted">Kč</span>
+        </div>
+        <div class="pill">
+          <span class="muted">Velký (0,5l):</span>
+          <input id="priceLarge" type="number" min="0" step="1" style="width:90px" />
+          <span class="muted">Kč</span>
+        </div>
+        <button id="resetAll" class="btn ghost">Vynulovat počty</button>
+        <button id="exportBtn" class="btn ghost">Export</button>
+        <label class="btn ghost" style="cursor:pointer">
+          Import <input id="importFile" type="file" accept="application/json" hidden>
+        </label>
+        <button id="logoutBtn" class="btn">Odhlásit</button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-2">
+      <section class="card">
+        <form id="addForm" class="row">
+          <div style="flex:1; min-width:200px">
+            <label for="personName">Přidat osobu</label>
+            <input id="personName" type="text" placeholder="Jméno (např. Karel)" maxlength="40" required />
+          </div>
+          <button class="btn primary" type="submit">Přidat</button>
+        </form>
+        <div class="spacer"></div>
+        <div class="totals">
+          <div class="kpi">
+            <h3>Celkem piva</h3>
+            <div id="kpiBeers">0</div>
+          </div>
+          <div class="kpi">
+            <h3>Celkem Kč</h3>
+            <div id="kpiMoney" class="money">0 Kč</div>
+          </div>
+          <div class="kpi">
+            <h3>Osob</h3>
+            <div id="kpiPeople">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div class="muted">Rychlá akce</div>
+          <div class="row">
+            <button class="btn small" id="addSmallAll">+ malý každému</button>
+            <button class="btn small" id="addLargeAll">+ velký každému</button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="muted" style="font-size:12px">Tip: Klikni na jméno pro přejmenování.</div>
+      </section>
+    </div>
+
+    <div class="spacer"></div>
+
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:28%">Osoba</th>
+            <th style="width:28%">Malý</th>
+            <th style="width:28%">Velký</th>
+            <th style="width:12%">Kč</th>
+            <th style="width:4%"></th>
+          </tr>
+        </thead>
+        <tbody id="peopleBody"></tbody>
+      </table>
+      <div class="footer">
+        <button id="clearAll" class="btn danger">Smazat všechny osoby</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'beer-tab-v1';
+    const AUTH_KEY = 'beer-auth'; // 'ok' když přihlášen
+
+    /** @type {{prices:{small:number,large:number}, people:{id:string,name:string,small:number,large:number}[]}} */
+    let state = load() || {
+      prices: { small: 35, large: 50 },
+      people: []
+    };
+
+    const el = {
+      app: document.getElementById('app'),
+      login: document.getElementById('login'),
+      loginForm: document.getElementById('loginForm'),
+      loginUser: document.getElementById('loginUser'),
+      loginPass: document.getElementById('loginPass'),
+      loginErr: document.getElementById('loginErr'),
+      logoutBtn: document.getElementById('logoutBtn'),
+
+      priceSmall: document.getElementById('priceSmall'),
+      priceLarge: document.getElementById('priceLarge'),
+      addForm: document.getElementById('addForm'),
+      personName: document.getElementById('personName'),
+      peopleBody: document.getElementById('peopleBody'),
+      kpiBeers: document.getElementById('kpiBeers'),
+      kpiMoney: document.getElementById('kpiMoney'),
+      kpiPeople: document.getElementById('kpiPeople'),
+      resetAll: document.getElementById('resetAll'),
+      clearAll: document.getElementById('clearAll'),
+      addSmallAll: document.getElementById('addSmallAll'),
+      addLargeAll: document.getElementById('addLargeAll'),
+      exportBtn: document.getElementById('exportBtn'),
+      importFile: document.getElementById('importFile'),
+    };
+
+    // === LOGIN ===
+    function setAuthed(v){
+      if(v){ localStorage.setItem(AUTH_KEY,'ok'); }
+      else { localStorage.removeItem(AUTH_KEY); }
+      renderAuth();
+    }
+    function isAuthed(){ return localStorage.getItem(AUTH_KEY)==='ok'; }
+    function renderAuth(){
+      const authed = isAuthed();
+      el.app.style.display = authed ? '' : 'none';
+      el.login.style.display = authed ? 'none' : 'flex';
+      if(!authed){
+        el.loginUser.value = '';
+        el.loginPass.value = '';
+        el.loginErr.style.display = 'none';
+        setTimeout(()=>el.loginUser.focus(), 50);
+      }
+    }
+
+    el.loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const u = (el.loginUser.value||'').trim();
+      const p = el.loginPass.value||'';
+      if(u==='tri' && p==='studne'){
+        setAuthed(true);
+      }else{
+        el.loginErr.style.display = 'block';
+      }
+    });
+    el.logoutBtn.addEventListener('click', ()=> setAuthed(false));
+
+    // === APP INIT ===
+    el.priceSmall.value = state.prices.small;
+    el.priceLarge.value = state.prices.large;
+
+    el.addForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = el.personName.value.trim();
+      if(!name) return;
+      addPerson(name);
+      el.personName.value='';
+    });
+
+    el.priceSmall.addEventListener('input', ()=>{
+      state.prices.small = clampInt(el.priceSmall.value, 0, 9999);
+      el.priceSmall.value = state.prices.small;
+      saveAndRender();
+    });
+    el.priceLarge.addEventListener('input', ()=>{
+      state.prices.large = clampInt(el.priceLarge.value, 0, 9999);
+      el.priceLarge.value = state.prices.large;
+      saveAndRender();
+    });
+
+    el.resetAll.addEventListener('click', ()=>{
+      if(!state.people.length) return;
+      if(confirm('Vynulovat počty piva všem?')){
+        state.people.forEach(p=>{p.small=0;p.large=0;});
+        saveAndRender();
+      }
+    });
+
+    el.clearAll.addEventListener('click', ()=>{
+      if(confirm('Smazat všechny osoby a začít od nuly?')){
+        state.people = [];
+        saveAndRender();
+      }
+    });
+
+    el.addSmallAll.addEventListener('click', ()=>{
+      state.people.forEach(p=>p.small++);
+      saveAndRender();
+    });
+    el.addLargeAll.addEventListener('click', ()=>{
+      state.people.forEach(p=>p.large++);
+      saveAndRender();
+    });
+
+    el.exportBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pivni-uctenka.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    el.importFile.addEventListener('change', async ()=>{
+      const file = el.importFile.files?.[0];
+      if(!file) return;
+      try{
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if(!data || !Array.isArray(data.people) || !data.prices) throw new Error('Neplatný formát.');
+        state = {
+          prices: {
+            small: clampInt(data.prices.small ?? 35,0,9999),
+            large: clampInt(data.prices.large ?? 50,0,9999),
+          },
+          people: data.people.map(p=>({
+            id: String(p.id ?? crypto.randomUUID()),
+            name: String(p.name ?? 'Osoba'),
+            small: clampInt(p.small ?? 0, 0, 9999),
+            large: clampInt(p.large ?? 0, 0, 9999),
+          }))
+        };
+        el.priceSmall.value = state.prices.small;
+        el.priceLarge.value = state.prices.large;
+        saveAndRender();
+      }catch(err){
+        alert('Import se nepovedl: ' + (err?.message || err));
+      }finally{
+        el.importFile.value = '';
+      }
+    });
+
+    function render(){
+      el.peopleBody.innerHTML = '';
+      const fmtCZK = n => `${n.toLocaleString('cs-CZ')} Kč`;
+      let totalBeers = 0, totalMoney = 0;
+
+      for(const p of state.people){
+        const owed = p.small*state.prices.small + p.large*state.prices.large;
+        totalBeers += (p.small + p.large);
+        totalMoney += owed;
+
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        tdName.innerHTML = `<span class="name" data-id="${p.id}" title="Klikni pro přejmenování">${escapeHtml(p.name)}</span>`;
+        tdName.addEventListener('click', (e)=>{
+          if(!(e.target instanceof HTMLElement)) return;
+          const span = e.target.closest('.name');
+          if(!span) return;
+          const newName = prompt('Změnit jméno:', p.name);
+          if(newName !== null){
+            p.name = newName.trim() || p.name;
+            saveAndRender();
+          }
+        });
+
+        const tdSmall = document.createElement('td');
+        tdSmall.append(counterEl(p.id, 'small', p.small, '🍺 malý'));
+
+        const tdLarge = document.createElement('td');
+        tdLarge.append(counterEl(p.id, 'large', p.large, '🍻 velký'));
+
+        const tdOwed = document.createElement('td');
+        tdOwed.className = 'money';
+        tdOwed.textContent = fmtCZK(owed);
+
+        const tdDel = document.createElement('td');
+        const del = document.createElement('button');
+        del.className = 'btn small bad';
+        del.textContent = '🗑';
+        del.title = 'Smazat osobu';
+        del.addEventListener('click', ()=>{
+          if(confirm(`Smazat ${p.name}?`)){
+            state.people = state.people.filter(x=>x.id!==p.id);
+            saveAndRender();
+          }
+        });
+        tdDel.append(del);
+
+        tr.append(tdName, tdSmall, tdLarge, tdOwed, tdDel);
+        el.peopleBody.append(tr);
+      }
+
+      el.kpiBeers.textContent = String(totalBeers);
+      el.kpiMoney.textContent = `${totalMoney.toLocaleString('cs-CZ')} Kč`;
+      el.kpiPeople.textContent = String(state.people.length);
+    }
+
+    function counterEl(id, kind, value, label){
+      const wrap = document.createElement('div');
+      wrap.className = 'counter';
+      const minus = document.createElement('button');
+      minus.className = 'btn small';
+      minus.textContent = '−';
+      minus.title = `Odebrat ${label}`;
+      minus.addEventListener('click', ()=>{
+        const p = state.people.find(x=>x.id===id);
+        if(!p) return;
+        p[kind] = Math.max(0, (p[kind]|0)-1);
+        saveAndRender();
+      });
+
+      const span = document.createElement('span');
+      span.textContent = String(value);
+      span.style.minWidth = '2ch';
+      span.style.textAlign = 'center';
+
+      const plus = document.createElement('button');
+      plus.className = 'btn small';
+      plus.textContent = '+';
+      plus.title = `Přidat ${label}`;
+      plus.addEventListener('click', ()=>{
+        const p = state.people.find(x=>x.id===id);
+        if(!p) return;
+        p[kind] = Math.min(9999, (p[kind]|0)+1);
+        saveAndRender();
+      });
+
+      wrap.append(minus, span, plus);
+      return wrap;
+    }
+
+    function addPerson(name){
+      state.people.push({ id: crypto.randomUUID(), name, small: 0, large: 0 });
+      saveAndRender();
+    }
+
+    function clampInt(v, min, max){
+      const n = Math.round(Number(v)||0);
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function saveAndRender(){
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch{}
+      render();
+    }
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return null;
+        const data = JSON.parse(raw);
+        if(!data?.prices || !Array.isArray(data.people)) return null;
+        data.people = data.people.map(p=>({
+          id: String(p.id ?? crypto.randomUUID()),
+          name: String(p.name ?? 'Osoba'),
+          small: clampInt(p.small ?? 0, 0, 9999),
+          large: clampInt(p.large ?? 0, 0, 9999),
+        }));
+        data.prices.small = clampInt(data.prices.small ?? 35,0,9999);
+        data.prices.large = clampInt(data.prices.large ?? 50,0,9999);
+        return data;
+      }catch{ return null; }
+    }
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
+    // First paint
+    renderAuth(); // zobrazí login nebo app
+    render();     // připraví DOM (neviditelný dokud nejsi přihlášen)
+  </script>
+</body>
+</html>
