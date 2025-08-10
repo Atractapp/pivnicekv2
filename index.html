@@ -23,13 +23,11 @@
       background:linear-gradient(180deg, var(--bg), #0b0e1a 60%);
       color:var(--text);
     }
-    .wrap{max-width:960px;margin:0 auto;padding:24px}
+    .wrap{max-width:800px;margin:0 auto;padding:24px}
     header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
     .title{display:flex;gap:10px;align-items:center}
     .title h1{margin:0;font-size:22px}
-    .card{background:var(--panel);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.06); box-shadow: 0 8px 24px rgba(0,0,0,.25)}
-    .grid{display:grid;gap:12px}
-    @media(min-width:800px){ .grid-cols-2{grid-template-columns: 1fr 1fr} }
+    .card{background:var(--panel);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.06); box-shadow: 0 8px 24px rgba(0,0,0,.25); margin-bottom:16px}
     label{font-size:12px;color:var(--muted)}
     input[type="text"], input[type="password"], input[type="number"]{
       width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);
@@ -57,14 +55,13 @@
     .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);padding:6px 8px;border-radius:999px}
     .counter{display:inline-flex;align-items:center;gap:6px}
     .muted{color:var(--muted)}
-    .totals{display:flex;gap:16px;flex-wrap:wrap}
-    .kpi{flex:1; min-width:180px;background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px}
+    .totals{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+    .kpi{flex:1; min-width:150px;background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px}
     .kpi h3{margin:0 0 6px 0;font-size:12px;color:var(--muted)}
     .kpi div{font-size:22px;font-weight:700}
     .spacer{height:8px}
     .name{font-weight:600}
     .money{font-variant-numeric: tabular-nums}
-    .danger{color:#fff;background:linear-gradient(180deg,#ef4444,#b91c1c);border:none}
 
     /* Login overlay */
     .login{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
@@ -126,46 +123,29 @@
       </div>
     </header>
 
-    <div class="grid grid-cols-2">
-      <section class="card">
-        <form id="addForm" class="row">
-          <div style="flex:1; min-width:200px">
-            <label for="personName">Přidat osobu</label>
-            <input id="personName" type="text" placeholder="Jméno (např. Karel)" maxlength="40" required />
-          </div>
-          <button class="btn primary" type="submit">Přidat</button>
-        </form>
-        <div class="spacer"></div>
-        <div class="totals">
-          <div class="kpi">
-            <h3>Celkem piva</h3>
-            <div id="kpiBeers">0</div>
-          </div>
-          <div class="kpi">
-            <h3>Celkem Kč</h3>
-            <div id="kpiMoney" class="money">0 Kč</div>
-          </div>
-          <div class="kpi">
-            <h3>Osob</h3>
-            <div id="kpiPeople">0</div>
-          </div>
+    <section class="card">
+      <form id="addForm" class="row">
+        <div style="flex:1; min-width:200px">
+          <label for="personName">Přidat osobu</label>
+          <input id="personName" type="text" placeholder="Jméno (např. Karel)" maxlength="40" required />
         </div>
-      </section>
-
-      <section class="card">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div class="muted">Rychlá akce</div>
-          <div class="row">
-            <button class="btn small" id="addSmallAll">+ malý každému</button>
-            <button class="btn small" id="addLargeAll">+ velký každému</button>
-          </div>
+        <button class="btn primary" type="submit">Přidat</button>
+      </form>
+      <div class="totals">
+        <div class="kpi">
+          <h3>Celkem piva</h3>
+          <div id="kpiBeers">0</div>
         </div>
-        <div class="spacer"></div>
-        <div class="muted" style="font-size:12px">Tip: Klikni na jméno pro přejmenování.</div>
-      </section>
-    </div>
-
-    <div class="spacer"></div>
+        <div class="kpi">
+          <h3>Celkem Kč</h3>
+          <div id="kpiMoney" class="money">0 Kč</div>
+        </div>
+        <div class="kpi">
+          <h3>Osob</h3>
+          <div id="kpiPeople">0</div>
+        </div>
+      </div>
+    </section>
 
     <section class="card">
       <table>
@@ -206,8 +186,6 @@
       kpiBeers: document.getElementById('kpiBeers'),
       kpiMoney: document.getElementById('kpiMoney'),
       kpiPeople: document.getElementById('kpiPeople'),
-      addSmallAll: document.getElementById('addSmallAll'),
-      addLargeAll: document.getElementById('addLargeAll'),
       exportBtn: document.getElementById('exportBtn'),
       importFile: document.getElementById('importFile'),
     };
@@ -252,15 +230,6 @@
     });
     el.priceLarge.addEventListener('input', ()=>{
       state.prices.large = clampInt(el.priceLarge.value, 0, 9999);
-      saveAndRender();
-    });
-
-    el.addSmallAll.addEventListener('click', ()=>{
-      state.people.forEach(p=>p.small++);
-      saveAndRender();
-    });
-    el.addLargeAll.addEventListener('click', ()=>{
-      state.people.forEach(p=>p.large++);
       saveAndRender();
     });
 
